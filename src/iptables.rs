@@ -6,7 +6,7 @@ mod table;
 
 pub(crate) use chain::Chain;
 pub(crate) use counter::Counter;
-pub(crate) use metrics::Metrics;
+pub(crate) use metrics::MetricsIptables;
 pub(crate) use rule::Rule;
 pub(crate) use table::Table;
 

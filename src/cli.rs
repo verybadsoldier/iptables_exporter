@@ -29,6 +29,9 @@ pub(crate) struct Args {
     /// (i.e. everything)
     #[arg(long, short, overrides_with = "verbose", action = ArgAction::Count)]
     pub(crate) quiet: u8,
+    /// Ignore ipset matching this regex
+    #[arg(long, value_name = "REGEX")]
+    pub(crate) ipset_ignore_regex: String,
 }
 
 #[derive(clap::ValueEnum, PartialEq, Eq, Copy, Clone, Debug, strum::AsRefStr, strum::Display)]
@@ -45,4 +48,7 @@ pub(crate) enum ScrapeTarget {
     /// enable 'ip6tables-legacy-save' for metrics
     #[strum(serialize = "ip6tables-legacy")]
     Ip6tablesLegacy,
+    /// enable 'ipset' for metrics
+    #[strum(serialize = "ipset")]
+    Ipset,
 }
