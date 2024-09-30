@@ -45,4 +45,7 @@ pub(crate) enum ScrapeTarget {
     /// enable 'ip6tables-legacy-save' for metrics
     #[strum(serialize = "ip6tables-legacy")]
     Ip6tablesLegacy,
+    /// enable 'ipset' for metrics
+    #[strum(serialize = "ipset")]
+    Ipset,
 }

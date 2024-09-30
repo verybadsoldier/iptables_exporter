@@ -6,7 +6,7 @@ use tracing::{debug, trace};
 
 use crate::{cli::ScrapeTarget, iptables::IptablesState};
 
-pub(crate) struct TargetMetrics {
+pub(crate) struct TargetMetricsIptables {
     chains_total: IntGaugeVec,
     rules_total: IntGaugeVec,
     chain_bytes_total: IntCounterVec,
@@ -17,7 +17,7 @@ pub(crate) struct TargetMetrics {
     rule_packets_total: IntCounterVec,
 }
 
-impl TargetMetrics {
+impl TargetMetricsIptables {
     fn update(&mut self, state: &IptablesState) {
         for t in &state.tables {
             let ct = self.chains_total.with_label_values(&[&t.name]);
@@ -75,13 +75,13 @@ impl TargetMetrics {
     }
 }
 
-pub(crate) struct Metrics {
-    map: HashMap<String, TargetMetrics>,
+pub(crate) struct MetricsIptables {
+    map: HashMap<String, TargetMetricsIptables>,
 }
 
-impl Metrics {
+impl MetricsIptables {
     pub(crate) fn new(targets: &[ScrapeTarget], r: &Registry) -> Result<Self> {
-        trace!("Metrics::new");
+        trace!("MetricsIptables::new");
 
         let mut map = HashMap::new();
         for tgt in targets {
@@ -162,7 +162,7 @@ impl Metrics {
             r.register(Box::new(chains_total.clone()))?;
             map.insert(
                 tgt.to_string(),
-                TargetMetrics {
+                TargetMetricsIptables {
                     chains_total,
                     rules_total,
                     chain_bytes_total,

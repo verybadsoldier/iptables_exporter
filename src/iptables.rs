@@ -6,7 +6,7 @@ mod table;
 
 pub(crate) use chain::Chain;
 pub(crate) use counter::Counter;
-pub(crate) use metrics::Metrics;
+pub(crate) use metrics::MetricsIptables;
 pub(crate) use rule::Rule;
 pub(crate) use table::Table;
 
@@ -56,7 +56,9 @@ pub(crate) struct IptablesState {
 }
 
 impl IptablesState {
-    pub(crate) fn new() -> Self { Self { tables: Vec::new() } }
+    pub(crate) fn new() -> Self {
+        Self { tables: Vec::new() }
+    }
 
     pub(crate) async fn parse<S: AsRef<str>>(&mut self, out: S) -> Result<()> {
         let mut table: Option<Table> = None;
@@ -74,7 +76,8 @@ impl IptablesState {
                 } // chain
                 b'[' => {
                     if let Some(ref mut t) = table {
-                        t.parse_rule(line)?;
+                        let myline = "[206:10720] -A FIREHOL_BLACKLIST -m set --match-set firehol_level1 src -m comment --comment kaese -j DROP";
+                        t.parse_rule(myline)?;
                     }
                 } // rule
                 b'C' => {

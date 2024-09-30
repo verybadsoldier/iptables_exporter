@@ -2,6 +2,7 @@
 mod macros;
 mod cli;
 mod error;
+mod ipset;
 mod iptables;
 mod parse;
 
@@ -21,11 +22,13 @@ use prometheus_hyper::Server;
 use tokio::time::{Duration, Instant};
 use tracing::{debug, info};
 
-use crate::iptables::{iptables_save, IptablesState, Metrics};
+use crate::cli::ScrapeTarget;
+use crate::ipset::{ipset, IpsetState, MetricsIpset};
+use crate::iptables::{iptables_save, IptablesState, MetricsIptables};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let args = cli::Args::parse();
+    let args: cli::Args = cli::Args::parse();
 
     match args.verbose {
         0 => match args.quiet {
@@ -44,7 +47,12 @@ async fn main() {
 
     info!("Registering metrics...");
     let registry = Arc::new(Registry::new());
-    let metrics = Arc::new(Mutex::new(unwrap_or_exit!(Metrics::new(
+    let metrics_iptables = Arc::new(Mutex::new(unwrap_or_exit!(MetricsIptables::new(
+        &args.scrape_targets,
+        &registry
+    ))));
+
+    let metrics_ipset = Arc::new(Mutex::new(unwrap_or_exit!(MetricsIpset::new(
         &args.scrape_targets,
         &registry
     ))));
@@ -86,19 +94,37 @@ async fn main() {
         for tgt in args.scrape_targets.iter().cloned() {
             let scrape_durations = scrape_durations.clone();
             let scrape_successes = scrape_successes.clone();
-            let metrics = metrics.clone();
+            let metrics_iptables = metrics_iptables.clone();
+            let metrics_ipset = metrics_ipset.clone();
             tokio::task::spawn(async move {
                 info!("Collecting {tgt} metrics...");
                 let before = Instant::now();
-                let out = unwrap_or_exit!(iptables_save(tgt).await);
 
-                let mut state = IptablesState::new();
-                unwrap_or_exit!(state.parse(&*out).await);
+                let out: String;
+                match tgt {
+                    ScrapeTarget::Ipset => {
+                        out = unwrap_or_exit!(ipset().await);
 
-                debug!("Updating {tgt} metrics...");
-                if let Ok(mut guard) = metrics.lock() {
-                    guard.update(tgt, &state);
-                };
+                        let mut state = IpsetState::new();
+                        unwrap_or_exit!(state.parse(&*out).await);
+
+                        debug!("Updating {tgt} metrics...");
+                        if let Ok(mut guard) = metrics_ipset.lock() {
+                            guard.update(tgt, &state);
+                        };
+                    }
+                    _ => {
+                        out = unwrap_or_exit!(iptables_save(tgt).await);
+                        let mut state = IptablesState::new();
+                        unwrap_or_exit!(state.parse(&*out).await);
+
+                        debug!("Updating {tgt} metrics...");
+                        if let Ok(mut guard) = metrics_iptables.lock() {
+                            guard.update(tgt, &state);
+                        };
+                    }
+                }
+
                 let after = Instant::now();
 
                 let elapsed = after.duration_since(before);
